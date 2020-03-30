@@ -23,8 +23,8 @@ pull_one_repo() {
 
   if [[ -d "$repo_code_path" ]]; then
     pushd "$repo_code_path" >/dev/null
-    echo 'git remote update'
-    git remote update
+    echo 'git remote update --prune'
+    git remote update --prune
     popd >/dev/null
   else
     echo git clone --mirror "ssh://git@$remote_host/$project/$repo.git" "$repo_code_path"
