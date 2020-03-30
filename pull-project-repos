@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+
+# Exit immediately if a command exits with a non-zero status.
+set -e
+
+remote_host=$REMOTE_GIT_HOST
+project_root='./projects'
+code_root='./code'
+
+pull_one_repo() {
+  local project=$1
+  local repo=$2
+  local project_code_path=$code_root/$project
+  local repo_code_path=$project_code_path/$repo.git
+
+  # Special handle on personal project: replace `~` to `_` for remote url.
+  if [[ "$project" =~ ^_.* ]]; then
+    project="~${project:1}"
+  fi
+
+  echo "Processing repository: $project/$repo"
+  mkdir -p "$project_code_path"
+
+  if [[ -d "$repo_code_path" ]]; then
+    pushd "$repo_code_path" >/dev/null
+    echo 'git remote update'
+    git remote update
+    popd >/dev/null
+  else
+    echo git clone --mirror "ssh://git@$remote_host/$project/$repo.git" "$repo_code_path"
+    git clone --mirror "ssh://git@$remote_host/$project/$repo.git" "$repo_code_path"
+  fi
+
+  echo
+}
+
+function pull_project() {
+  local project=$1
+
+  echo "pulling all repos in project $project ..."
+  # for repo in $(cat "$project_root/$project.txt"); do
+  cat "$project_root/$project.txt" | while read repo; do
+    if [[ "$repo" == "" ]]; then
+      # skip empty line
+      :
+    elif [[ "$repo" =~ ^\#.* ]]; then
+      # skip comment
+      :
+    else
+      pull_one_repo "$project" "$repo"
+    fi
+  done
+  echo
+}
+
+function pull_all() {
+  for fullname in $(cd "$project_root" && find * -name '*.txt'); do
+    local project=${fullname%.*}
+    pull_project "$project"
+  done
+}
+
+project=$1
+
+if [[ "$project" == "" ]]; then
+  pull_all
+else
+  pull_project "$project"
+fi
+
+echo "all done!"
